@@ -11,10 +11,11 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = true;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x101015);
-scene.fog = new THREE.FogExp2(0x0b0b10, 0.055);
+scene.background = new THREE.Color(0x252530);
+scene.fog = new THREE.FogExp2(0x1a1a20, 0.04);
 
 const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 400);
 const clock = new THREE.Clock();
@@ -138,13 +139,15 @@ function animate() {
 animate();
 
 function addLights(scene) {
-  const ambient = new THREE.AmbientLight(0x222226, 0.9);
+  const ambient = new THREE.AmbientLight(0x444448, 1.2);
   scene.add(ambient);
 
-  const dir = new THREE.DirectionalLight(0xffc873, 0.4);
+  const dir = new THREE.DirectionalLight(0xffc873, 0.8);
   dir.position.set(20, 40, 20);
   dir.castShadow = true;
   dir.shadow.mapSize.set(2048, 2048);
+  dir.shadow.bias = -0.0001;
+  dir.shadow.radius = 8;
   const d = 60;
   dir.shadow.camera.left = -d;
   dir.shadow.camera.right = d;

@@ -63,14 +63,36 @@ export class VirtualJoystick {
     const distance = Math.hypot(dx, dy);
     const max = this.radius;
 
-    if (distance > max) {
-      const ratio = max / distance;
-      this.offset.x = dx * ratio;
-      this.offset.y = dy * ratio;
+    // 斜め入力を無効化し、より強い軸方向の入力のみを採用
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    let limitedX = 0;
+    let limitedY = 0;
+
+    if (absX > absY) {
+      // X軸の方が強い場合
+      limitedX = dx;
+      limitedY = 0;
+    } else if (absY > absX) {
+      // Y軸の方が強い場合
+      limitedX = 0;
+      limitedY = dy;
     } else {
-      this.offset.x = dx;
-      this.offset.y = dy;
+      // 同じ強さの場合は何もしない
+      limitedX = 0;
+      limitedY = 0;
     }
+
+    // 半径を超える場合は制限
+    if (Math.abs(limitedX) > max) {
+      limitedX = limitedX > 0 ? max : -max;
+    }
+    if (Math.abs(limitedY) > max) {
+      limitedY = limitedY > 0 ? max : -max;
+    }
+
+    this.offset.x = limitedX;
+    this.offset.y = limitedY;
 
     const normalizedX = clamp(this.offset.x / max, -1, 1);
     const normalizedY = clamp(this.offset.y / max, -1, 1);

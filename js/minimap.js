@@ -19,51 +19,25 @@ export class Minimap {
     ctx.fillStyle = 'rgba(8, 10, 14, 0.95)';
     ctx.fillRect(0, 0, this.baseLayer.width, this.baseLayer.height);
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
     const offset = this.padding;
-
-    ctx.beginPath();
-    for (let x = 0; x <= this.maze.width; x++) {
-      const posX = offset + x * this.scale;
-      ctx.moveTo(posX, offset);
-      ctx.lineTo(posX, offset + this.maze.height * this.scale);
-    }
-    for (let y = 0; y <= this.maze.height; y++) {
-      const posY = offset + y * this.scale;
-      ctx.moveTo(offset, posY);
-      ctx.lineTo(offset + this.maze.width * this.scale, posY);
-    }
-    ctx.stroke();
-
+    
+    // 外枠だけを描画
     ctx.strokeStyle = 'rgba(120, 130, 145, 0.65)';
     ctx.lineWidth = 2;
-    this.maze.forEachCell((cell) => {
-      const { x, y, walls } = cell;
-      const left = offset + x * this.scale;
-      const top = offset + y * this.scale;
-      const right = left + this.scale;
-      const bottom = top + this.scale;
-
-      ctx.beginPath();
-      if (walls.N) {
-        ctx.moveTo(left, top);
-        ctx.lineTo(right, top);
-      }
-      if (walls.S) {
-        ctx.moveTo(left, bottom);
-        ctx.lineTo(right, bottom);
-      }
-      if (walls.W) {
-        ctx.moveTo(left, top);
-        ctx.lineTo(left, bottom);
-      }
-      if (walls.E) {
-        ctx.moveTo(right, top);
-        ctx.lineTo(right, bottom);
-      }
-      ctx.stroke();
-    });
+    ctx.beginPath();
+    // 上
+    ctx.moveTo(offset, offset);
+    ctx.lineTo(offset + this.maze.width * this.scale, offset);
+    // 右
+    ctx.moveTo(offset + this.maze.width * this.scale, offset);
+    ctx.lineTo(offset + this.maze.width * this.scale, offset + this.maze.height * this.scale);
+    // 下
+    ctx.moveTo(offset + this.maze.width * this.scale, offset + this.maze.height * this.scale);
+    ctx.lineTo(offset, offset + this.maze.height * this.scale);
+    // 左
+    ctx.moveTo(offset, offset + this.maze.height * this.scale);
+    ctx.lineTo(offset, offset);
+    ctx.stroke();
   }
 
   markVisited(cell) {
@@ -85,6 +59,40 @@ export class Minimap {
     ctx.drawImage(this.baseLayer, 0, 0);
 
     const offset = this.padding;
+    
+    // 探索済みセルの壁を描画
+    ctx.strokeStyle = 'rgba(120, 130, 145, 0.65)';
+    ctx.lineWidth = 2;
+    for (let y = 0; y < this.maze.height; y++) {
+      for (let x = 0; x < this.maze.width; x++) {
+        if (!this.visited[y][x]) continue;
+        
+        const cell = this.maze.grid[y][x];
+        const left = offset + x * this.scale;
+        const top = offset + y * this.scale;
+        const right = left + this.scale;
+        const bottom = top + this.scale;
+
+        ctx.beginPath();
+        if (cell.walls.N) {
+          ctx.moveTo(left, top);
+          ctx.lineTo(right, top);
+        }
+        if (cell.walls.S) {
+          ctx.moveTo(left, bottom);
+          ctx.lineTo(right, bottom);
+        }
+        if (cell.walls.W) {
+          ctx.moveTo(left, top);
+          ctx.lineTo(left, bottom);
+        }
+        if (cell.walls.E) {
+          ctx.moveTo(right, top);
+          ctx.lineTo(right, bottom);
+        }
+        ctx.stroke();
+      }
+    }
     
     // 鍵とゴールの位置を薄く表示
     if (this.discovered.key && keyCell) {

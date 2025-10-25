@@ -1,0 +1,133 @@
+* {
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+  background: #101013;
+  color: #f5f5f5;
+  overflow: hidden;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+#game-container {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  pointer-events: none;
+}
+
+#minimap {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: min(24vw, 240px);
+  height: min(24vw, 240px);
+  background: rgba(12, 16, 24, 0.85);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 8px;
+  pointer-events: auto;
+}
+
+#score-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: min(30vw, 200px);
+  background: rgba(18, 22, 30, 0.85);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+}
+
+.score-item {
+  font-size: clamp(14px, 3vw, 18px);
+  letter-spacing: 0.05em;
+}
+
+#message-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 20px 28px;
+  border-radius: 16px;
+  font-size: clamp(18px, 4vw, 26px);
+  font-weight: bold;
+  text-align: center;
+  min-width: 240px;
+  display: none;
+  pointer-events: auto;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 8, 12, 0.92);
+  font-size: 22px;
+  z-index: 10;
+}
+
+#joystick-container {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+#joystick-base {
+  width: min(45vw, 220px);
+  height: min(45vw, 220px);
+  max-width: 220px;
+  max-height: 220px;
+  background: rgba(18, 22, 30, 0.55);
+  border-radius: 50%;
+  position: relative;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+#joystick-thumb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44%;
+  height: 44%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 208, 120, 0.95), rgba(204, 143, 58, 0.8));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+@media (min-width: 960px) {
+  #joystick-container {
+    left: 18%;
+    transform: translateX(-50%);
+  }
+
+  #joystick-base {
+    width: 200px;
+    height: 200px;
+  }
+}

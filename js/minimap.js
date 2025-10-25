@@ -131,7 +131,7 @@ export class Minimap {
       
       ctx.save();
       ctx.translate(posX, posY);
-      ctx.rotate(yaw + Math.PI); // プレイヤーの向きに回転（180度回転）
+      ctx.rotate(yaw); // プレイヤーの向きに回転
       
       ctx.fillStyle = '#ff5151';
       ctx.strokeStyle = '#ffffff';

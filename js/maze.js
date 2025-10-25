@@ -29,9 +29,19 @@ export class Maze {
   }
 
   _generate() {
-    // Start from a random even coordinate (passage cell)
-    const startX = 2 * Math.floor(Math.random() * this.width);
-    const startY = 2 * Math.floor(Math.random() * this.height);
+    // Ensure outer boundary walls
+    for (let x = 0; x < this.logicalWidth; x++) {
+      this.grid[0][x].isWall = true; // Top edge
+      this.grid[this.logicalHeight - 1][x].isWall = true; // Bottom edge
+    }
+    for (let y = 0; y < this.logicalHeight; y++) {
+      this.grid[y][0].isWall = true; // Left edge
+      this.grid[y][this.logicalWidth - 1].isWall = true; // Right edge
+    }
+
+    // Start from a random even coordinate (passage cell) within bounds
+    const startX = Math.max(1, Math.min(this.logicalWidth - 2, 2 * Math.floor(Math.random() * this.width) + 1));
+    const startY = Math.max(1, Math.min(this.logicalHeight - 2, 2 * Math.floor(Math.random() * this.height) + 1));
     
     const stack = [];
     const start = this.grid[startY][startX];
@@ -52,7 +62,11 @@ export class Maze {
         .map((dir) => {
           const nx = current.x + dir.dx;
           const ny = current.y + dir.dy;
-          if (this._inBounds(nx, ny) && this.grid[ny][nx].isWall) {
+          // Check bounds and ensure we're not at edges
+          if (this._inBounds(nx, ny) && 
+              nx > 0 && nx < this.logicalWidth - 1 && 
+              ny > 0 && ny < this.logicalHeight - 1 &&
+              this.grid[ny][nx].isWall) {
             return { cell: this.grid[ny][nx], dir };
           }
           return null;

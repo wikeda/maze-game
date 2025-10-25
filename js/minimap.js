@@ -6,7 +6,7 @@ export class Minimap {
     this.padding = 8;
     this.scale = (this.canvas.width - this.padding * 2) / this.maze.width;
     this.visited = Array.from({ length: maze.height }, () => Array(maze.width).fill(false));
-    this.discovered = { key: false, exit: false };
+    this.discovered = { key: true, exit: true }; // Always show key and exit
     this.baseLayer = document.createElement('canvas');
     this.baseLayer.width = this.canvas.width;
     this.baseLayer.height = this.canvas.height;
@@ -85,6 +85,16 @@ export class Minimap {
     ctx.drawImage(this.baseLayer, 0, 0);
 
     const offset = this.padding;
+    
+    // 鍵とゴールの位置を薄く表示
+    if (this.discovered.key && keyCell) {
+      this._drawMarker(keyCell, 'rgba(241, 201, 77, 0.4)');
+    }
+    if (this.discovered.exit && exitCell) {
+      this._drawMarker(exitCell, 'rgba(92, 213, 116, 0.4)');
+    }
+    
+    // 探索済みエリア
     for (let y = 0; y < this.maze.height; y++) {
       for (let x = 0; x < this.maze.width; x++) {
         if (!this.visited[y][x]) continue;
@@ -95,6 +105,7 @@ export class Minimap {
       }
     }
 
+    // 鍵とゴールの位置を明るく表示（探索済みの場合）
     if (this.discovered.key && keyCell) {
       this._drawMarker(keyCell, '#f1c94d');
     }

@@ -93,10 +93,10 @@ export class Minimap {
       }
     }
     
-    // ゴールの位置を常に表示（鍵は見つけるまで非表示）
-    if (this.discovered.exit && exitCell) {
-      this._drawMarker(exitCell, 'rgba(92, 213, 116, 0.4)');
-    }
+    // ゴールの位置は非表示（鍵取得後は3D空間でビーコンとして表示）
+    // if (this.discovered.exit && exitCell) {
+    //   this._drawMarker(exitCell, 'rgba(92, 213, 116, 0.4)');
+    // }
     
     // 探索済みエリア（通路 - 明るい青）
     for (let y = 0; y < this.maze.logicalHeight; y++) {
@@ -113,13 +113,14 @@ export class Minimap {
       }
     }
 
-    // 鍵とゴールの位置を明るく表示（探索済みの場合）
+    // 鍵の位置を表示（探索済みの場合）
     if (this.discovered.key && keyCell) {
       this._drawMarker(keyCell, '#f1c94d');
     }
-    if (this.discovered.exit && exitCell) {
-      this._drawMarker(exitCell, '#5cd574');
-    }
+    // ゴールは3D空間でビーコンとして表示されるため、ミニマップには表示しない
+    // if (this.discovered.exit && exitCell) {
+    //   this._drawMarker(exitCell, '#5cd574');
+    // }
 
     if (playerCell) {
       const posX = offset + playerCell.x * this.scale + this.scale / 2;

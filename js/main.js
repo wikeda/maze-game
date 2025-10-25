@@ -35,6 +35,7 @@ let previousCell = null;
 const keyWorldPosition = new THREE.Vector3();
 const exitWorldPosition = new THREE.Vector3();
 let doorClosedY = 0;
+let beaconGroup = null; // ゴールビーコン
 
 function initStage() {
   // Clear previous stage
@@ -46,6 +47,10 @@ function initStage() {
   }
   if (exitObject && exitObject.anchor) {
     scene.remove(exitObject.anchor);
+  }
+  if (beaconGroup) {
+    scene.remove(beaconGroup);
+    beaconGroup = null;
   }
 
   // Clear all children except lights
@@ -160,12 +165,31 @@ function update(delta) {
       scene.remove(keyObject.group);
       minimap.discoverKey();
       ui.flashMessage('鍵を手に入れた！出口が開いた。');
+      
+      // ゴールビーコンを作成
+      if (!beaconGroup) {
+        createGoalBeacon(exitObject.anchor);
+      }
     }
   }
 
   if (hasKey && doorProgress < 1) {
     doorProgress = Math.min(1, doorProgress + delta * 0.5);
     exitObject.door.position.y = THREE.MathUtils.lerp(doorClosedY, doorClosedY + 2.4, doorProgress);
+  }
+
+  // ビーコンのアニメーション
+  if (beaconGroup && beaconGroup.userData) {
+    beaconGroup.userData.time += delta;
+    const time = beaconGroup.userData.time;
+    
+    // パルス効果（明るさが変わる）
+    const pulse = (Math.sin(time * 2) + 1) * 0.3 + 0.4;
+    beaconGroup.userData.outerBeam.material.opacity = 0.3 * pulse;
+    beaconGroup.userData.innerBeam.material.opacity = 0.6 * pulse;
+    
+    // ゆっくり回転
+    beaconGroup.rotation.y += delta * 0.3;
   }
 
   if (exitObject) {
@@ -460,4 +484,46 @@ function formatTime(elapsedMs) {
     .padStart(2, '0');
   const seconds = (totalSeconds % 60).toString().padStart(2, '0');
   return `${minutes}:${seconds}`;
+}
+
+function createGoalBeacon(exitAnchor) {
+  beaconGroup = new THREE.Group();
+  
+  // ゴールから上空に向かう淡い光の線を作成
+  const beamHeight = 30; // 光の高さ
+  const beamGeometry = new THREE.CylinderGeometry(0.15, 0.3, beamHeight, 8);
+  
+  // 外側の光（淡い青緑）
+  const outerMaterial = new THREE.MeshBasicMaterial({
+    color: 0x5cd574,
+    transparent: true,
+    opacity: 0.3,
+    side: THREE.DoubleSide,
+  });
+  const outerBeam = new THREE.Mesh(beamGeometry, outerMaterial);
+  outerBeam.position.y = beamHeight / 2 + 2;
+  beaconGroup.add(outerBeam);
+  
+  // 内側の光（明るい青緑）
+  const innerGeometry = new THREE.CylinderGeometry(0.08, 0.15, beamHeight, 8);
+  const innerMaterial = new THREE.MeshBasicMaterial({
+    color: 0x5cd574,
+    transparent: true,
+    opacity: 0.6,
+    side: THREE.DoubleSide,
+  });
+  const innerBeam = new THREE.Mesh(innerGeometry, innerMaterial);
+  innerBeam.position.y = beamHeight / 2 + 2;
+  beaconGroup.add(innerBeam);
+  
+  // アニメーション用に保存
+  beaconGroup.userData.outerBeam = outerBeam;
+  beaconGroup.userData.innerBeam = innerBeam;
+  beaconGroup.userData.time = 0;
+  
+  // ゴールの位置に配置
+  exitAnchor.add(beaconGroup);
+  scene.add(exitAnchor);
+  
+  return beaconGroup;
 }

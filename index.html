@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Maze Game</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- ゲーム画面 -->
+    <div id="gameContainer">
+        <!-- 3D Canvas -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- UI要素 -->
+        <div id="ui">
+            <!-- ミニマップ (左上) -->
+            <div id="minimap">
+                <canvas id="minimapCanvas"></canvas>
+            </div>
+            
+            <!-- スコアパネル (右上) -->
+            <div id="scorePanel">
+                <div class="score-item">
+                    <span class="score-label">歩数:</span>
+                    <span id="stepCount">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">時間:</span>
+                    <span id="timeDisplay">00:00</span>
+                </div>
+            </div>
+            
+            <!-- 仮想ジョイスティック (左下) -->
+            <div id="joystick">
+                <div id="joystickKnob"></div>
+            </div>
+            
+            <!-- ゲーム状態表示 -->
+            <div id="gameStatus">
+                <div id="instructions">
+                    <p>鍵を見つけて出口へ向かおう！</p>
+                    <p>ジョイスティックで移動、画面をドラッグで視点変更</p>
+                </div>
+                <div id="keyStatus" class="hidden">
+                    <p>🔑 鍵を取得しました！出口に向かってください。</p>
+                </div>
+            </div>
+            
+            <!-- クリア画面 -->
+            <div id="clearScreen" class="hidden">
+                <div class="clear-content">
+                    <h2>🎉 クリア！</h2>
+                    <p>歩数: <span id="finalSteps">0</span></p>
+                    <p>時間: <span id="finalTime">00:00</span></p>
+                    <button id="restartButton">もう一度プレイ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- ゲームスクリプト -->
+    <script src="js/score.js"></script>
+    <script src="js/maze.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/minimap.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
+
+
+

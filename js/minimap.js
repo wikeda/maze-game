@@ -45,6 +45,22 @@ export class Minimap {
   markVisited(cell) {
     if (!cell) return;
     this.visited[cell.y][cell.x] = true;
+    
+    // 通路を通ったとき、両隣の壁も表示
+    const directions = [
+      { dx: -1, dy: 0 }, // Left
+      { dx: 1, dy: 0 },  // Right
+      { dx: 0, dy: -1 }, // Top
+      { dx: 0, dy: 1 },  // Bottom
+    ];
+    
+    for (const dir of directions) {
+      const nx = cell.x + dir.dx;
+      const ny = cell.y + dir.dy;
+      if (nx >= 0 && nx < this.maze.logicalWidth && ny >= 0 && ny < this.maze.logicalHeight) {
+        this.visited[ny][nx] = true;
+      }
+    }
   }
 
   discoverKey() {

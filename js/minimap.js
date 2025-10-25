@@ -124,10 +124,28 @@ export class Minimap {
     if (playerCell) {
       const posX = offset + playerCell.x * this.scale + this.scale / 2;
       const posY = offset + playerCell.y * this.scale + this.scale / 2;
+      
+      // プレイヤーの向きを取得（yaw）
+      const yaw = playerCell.yaw || 0;
+      const triangleSize = this.scale * 0.3;
+      
+      ctx.save();
+      ctx.translate(posX, posY);
+      ctx.rotate(yaw); // プレイヤーの向きに回転
+      
       ctx.fillStyle = '#ff5151';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(posX, posY, this.scale * 0.2, 0, Math.PI * 2);
+      // 三角形を描画（上向き）
+      ctx.moveTo(0, -triangleSize); // 頂点
+      ctx.lineTo(-triangleSize * 0.6, triangleSize * 0.4); // 左下
+      ctx.lineTo(triangleSize * 0.6, triangleSize * 0.4); // 右下
+      ctx.closePath();
       ctx.fill();
+      ctx.stroke();
+      
+      ctx.restore();
     }
   }
 

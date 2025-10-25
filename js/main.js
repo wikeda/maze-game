@@ -144,6 +144,8 @@ function update(delta) {
     }
   }
 
+  // Add player's yaw to the cell for minimap rendering
+  currentCell.yaw = player.yaw;
   minimap.render(currentCell, maze.keyCell, maze.exitCell);
 
   if (!hasKey && keyObject && keyObject.group) {

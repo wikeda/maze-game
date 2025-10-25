@@ -137,10 +137,10 @@ export class Minimap {
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      // 三角形を描画（上向き）
-      ctx.moveTo(0, -triangleSize); // 頂点
-      ctx.lineTo(-triangleSize * 0.6, triangleSize * 0.4); // 左下
-      ctx.lineTo(triangleSize * 0.6, triangleSize * 0.4); // 右下
+      // 三角形を描画（下向き - 先端を進行方向に）
+      ctx.moveTo(0, triangleSize); // 頂点（下向き）
+      ctx.lineTo(-triangleSize * 0.6, -triangleSize * 0.4); // 左上
+      ctx.lineTo(triangleSize * 0.6, -triangleSize * 0.4); // 右上
       ctx.closePath();
       ctx.fill();
       ctx.stroke();

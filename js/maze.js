@@ -3,7 +3,9 @@ export class Maze {
     this.width = width;
     this.height = height;
     this.cellSize = cellSize;
-    this.wallThickness = Math.max(0.4, cellSize * 0.22);
+    // Grid is now doubled in size to accommodate wall cells
+    this.logicalWidth = width * 2 + 1;
+    this.logicalHeight = height * 2 + 1;
     this.wallHeight = 2.5;
     this.grid = [];
     this._buildGrid();
@@ -12,14 +14,14 @@ export class Maze {
   }
 
   _buildGrid() {
-    for (let y = 0; y < this.height; y++) {
+    for (let y = 0; y < this.logicalHeight; y++) {
       const row = [];
-      for (let x = 0; x < this.width; x++) {
+      for (let x = 0; x < this.logicalWidth; x++) {
         row.push({
           x,
           y,
+          isWall: true, // Default to wall
           visited: false,
-          walls: { N: true, S: true, E: true, W: true },
         });
       }
       this.grid.push(row);
@@ -27,16 +29,31 @@ export class Maze {
   }
 
   _generate() {
+    // Ensure outer boundary walls
+    for (let x = 0; x < this.logicalWidth; x++) {
+      this.grid[0][x].isWall = true; // Top edge
+      this.grid[this.logicalHeight - 1][x].isWall = true; // Bottom edge
+    }
+    for (let y = 0; y < this.logicalHeight; y++) {
+      this.grid[y][0].isWall = true; // Left edge
+      this.grid[y][this.logicalWidth - 1].isWall = true; // Right edge
+    }
+
+    // Start from a random even coordinate (passage cell) within bounds
+    const startX = Math.max(1, Math.min(this.logicalWidth - 2, 2 * Math.floor(Math.random() * this.width) + 1));
+    const startY = Math.max(1, Math.min(this.logicalHeight - 2, 2 * Math.floor(Math.random() * this.height) + 1));
+    
     const stack = [];
-    const start = this.grid[0][0];
+    const start = this.grid[startY][startX];
+    start.isWall = false;
     start.visited = true;
     stack.push(start);
 
     const directions = [
-      { key: 'N', dx: 0, dy: -1, opposite: 'S' },
-      { key: 'S', dx: 0, dy: 1, opposite: 'N' },
-      { key: 'E', dx: 1, dy: 0, opposite: 'W' },
-      { key: 'W', dx: -1, dy: 0, opposite: 'E' },
+      { dx: 0, dy: -2 },  // North
+      { dx: 0, dy: 2 },   // South
+      { dx: 2, dy: 0 },   // East
+      { dx: -2, dy: 0 },  // West
     ];
 
     while (stack.length) {
@@ -45,7 +62,11 @@ export class Maze {
         .map((dir) => {
           const nx = current.x + dir.dx;
           const ny = current.y + dir.dy;
-          if (this._inBounds(nx, ny) && !this.grid[ny][nx].visited) {
+          // Check bounds and ensure we're not at edges
+          if (this._inBounds(nx, ny) && 
+              nx > 0 && nx < this.logicalWidth - 1 && 
+              ny > 0 && ny < this.logicalHeight - 1 &&
+              this.grid[ny][nx].isWall) {
             return { cell: this.grid[ny][nx], dir };
           }
           return null;
@@ -58,8 +79,13 @@ export class Maze {
       }
 
       const { cell: next, dir } = neighbors[Math.floor(Math.random() * neighbors.length)];
-      current.walls[dir.key] = false;
-      next.walls[dir.opposite] = false;
+      
+      // Carve path: remove wall between current and next
+      const wallX = current.x + dir.dx / 2;
+      const wallY = current.y + dir.dy / 2;
+      this.grid[wallY][wallX].isWall = false;
+      
+      next.isWall = false;
       next.visited = true;
       stack.push(next);
     }
@@ -73,10 +99,19 @@ export class Maze {
   }
 
   _placeKeyAndExit() {
-    // 開始位置をランダムに選択
-    const startX = Math.floor(Math.random() * this.width);
-    const startY = Math.floor(Math.random() * this.height);
-    this.startCell = this.grid[startY][startX];
+    // Find all passage cells (non-wall cells)
+    const passageCells = [];
+    for (let y = 0; y < this.logicalHeight; y++) {
+      for (let x = 0; x < this.logicalWidth; x++) {
+        if (!this.grid[y][x].isWall) {
+          passageCells.push(this.grid[y][x]);
+        }
+      }
+    }
+    
+    // Start from random passage
+    const startIdx = Math.floor(Math.random() * passageCells.length);
+    this.startCell = passageCells[startIdx];
     
     const distancesFromStart = this._calculateDistances(this.startCell);
     this.keyCell = this._farthestCell(distancesFromStart);
@@ -85,16 +120,18 @@ export class Maze {
   }
 
   _calculateDistances(fromCell) {
-    const distances = Array.from({ length: this.height }, () => Array(this.width).fill(Infinity));
+    const distances = Array.from({ length: this.logicalHeight }, () => 
+      Array(this.logicalWidth).fill(Infinity)
+    );
     const queue = [];
     distances[fromCell.y][fromCell.x] = 0;
     queue.push(fromCell);
 
     const deltas = [
-      { key: 'N', dx: 0, dy: -1 },
-      { key: 'S', dx: 0, dy: 1 },
-      { key: 'E', dx: 1, dy: 0 },
-      { key: 'W', dx: -1, dy: 0 },
+      { dx: 0, dy: -1 },
+      { dx: 0, dy: 1 },
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 },
     ];
 
     while (queue.length) {
@@ -102,10 +139,10 @@ export class Maze {
       const distance = distances[cell.y][cell.x];
 
       for (const d of deltas) {
-        if (cell.walls[d.key]) continue;
         const nx = cell.x + d.dx;
         const ny = cell.y + d.dy;
         if (!this._inBounds(nx, ny)) continue;
+        if (this.grid[ny][nx].isWall) continue;
         if (distances[ny][nx] <= distance + 1) continue;
         distances[ny][nx] = distance + 1;
         queue.push(this.grid[ny][nx]);
@@ -118,8 +155,9 @@ export class Maze {
   _farthestCell(distances, ignoreCell = null) {
     let farthest = this.grid[0][0];
     let farDistance = -1;
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
+    for (let y = 0; y < this.logicalHeight; y++) {
+      for (let x = 0; x < this.logicalWidth; x++) {
+        if (this.grid[y][x].isWall) continue;
         if (ignoreCell && ignoreCell.x === x && ignoreCell.y === y) continue;
         const d = distances[y][x];
         if (d > farDistance && d < Infinity) {
@@ -132,12 +170,12 @@ export class Maze {
   }
 
   _inBounds(x, y) {
-    return x >= 0 && y >= 0 && x < this.width && y < this.height;
+    return x >= 0 && y >= 0 && x < this.logicalWidth && y < this.logicalHeight;
   }
 
   cellToWorld(cell) {
-    const originX = -this.width * this.cellSize * 0.5;
-    const originZ = -this.height * this.cellSize * 0.5;
+    const originX = -this.logicalWidth * this.cellSize * 0.5;
+    const originZ = -this.logicalHeight * this.cellSize * 0.5;
     return {
       x: originX + cell.x * this.cellSize + this.cellSize * 0.5,
       z: originZ + cell.y * this.cellSize + this.cellSize * 0.5,
@@ -145,8 +183,8 @@ export class Maze {
   }
 
   worldToCell(x, z) {
-    const originX = -this.width * this.cellSize * 0.5;
-    const originZ = -this.height * this.cellSize * 0.5;
+    const originX = -this.logicalWidth * this.cellSize * 0.5;
+    const originZ = -this.logicalHeight * this.cellSize * 0.5;
     const cx = Math.floor((x - originX) / this.cellSize);
     const cy = Math.floor((z - originZ) / this.cellSize);
     if (!this._inBounds(cx, cy)) {
@@ -158,50 +196,12 @@ export class Maze {
   isWalkable(x, z, radius = 0.3) {
     const cell = this.worldToCell(x, z);
     if (!cell) return false;
-
-    const originX = -this.width * this.cellSize * 0.5 + cell.x * this.cellSize;
-    const originZ = -this.height * this.cellSize * 0.5 + cell.y * this.cellSize;
-    const localX = x - originX;
-    const localZ = z - originZ;
-    const size = this.cellSize;
-    const pad = this.wallThickness * 0.5 + radius;
-
-    if (localX < pad && cell.walls.W) return false;
-    if (localX > size - pad && cell.walls.E) return false;
-    if (localZ < pad && cell.walls.N) return false;
-    if (localZ > size - pad && cell.walls.S) return false;
-
-    // Check neighbor walls when close to border without wall for smoother collision
-    if (localX < radius) {
-      const neighbor = this._neighbor(cell, -1, 0);
-      if (neighbor && neighbor.walls.E) return false;
-    }
-    if (localX > size - radius) {
-      const neighbor = this._neighbor(cell, 1, 0);
-      if (neighbor && neighbor.walls.W) return false;
-    }
-    if (localZ < radius) {
-      const neighbor = this._neighbor(cell, 0, -1);
-      if (neighbor && neighbor.walls.S) return false;
-    }
-    if (localZ > size - radius) {
-      const neighbor = this._neighbor(cell, 0, 1);
-      if (neighbor && neighbor.walls.N) return false;
-    }
-
-    return true;
-  }
-
-  _neighbor(cell, dx, dy) {
-    const nx = cell.x + dx;
-    const ny = cell.y + dy;
-    if (!this._inBounds(nx, ny)) return null;
-    return this.grid[ny][nx];
+    return !cell.isWall;
   }
 
   forEachCell(callback) {
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
+    for (let y = 0; y < this.logicalHeight; y++) {
+      for (let x = 0; x < this.logicalWidth; x++) {
         callback(this.grid[y][x]);
       }
     }

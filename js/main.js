@@ -35,6 +35,7 @@ let previousCell = null;
 const keyWorldPosition = new THREE.Vector3();
 const exitWorldPosition = new THREE.Vector3();
 let doorClosedY = 0;
+let beaconGroup = null; // ゴールビーコン
 
 function initStage() {
   // Clear previous stage
@@ -46,6 +47,10 @@ function initStage() {
   }
   if (exitObject && exitObject.anchor) {
     scene.remove(exitObject.anchor);
+  }
+  if (beaconGroup) {
+    scene.remove(beaconGroup);
+    beaconGroup = null;
   }
 
   // Clear all children except lights
@@ -65,8 +70,17 @@ function initStage() {
   const stageConfig = stageManager.getCurrentStageConfig();
   const size = stageConfig.size;
   
+  // Update stage colors
+  scene.background = new THREE.Color(stageConfig.skyColor);
+  // Fog color will be slightly darker than sky
+  const fogColor = new THREE.Color(stageConfig.skyColor);
+  fogColor.r *= 0.7;
+  fogColor.g *= 0.7;
+  fogColor.b *= 0.7;
+  scene.fog = new THREE.FogExp2(fogColor, 0.04);
+  
   // Initialize game objects
-  maze = new Maze(size, size, 4);
+  maze = new Maze(size, size, 2);
   minimap = new Minimap(document.getElementById('minimap'), maze);
   scoreBoard = new ScoreBoard(
     document.getElementById('step-counter'),
@@ -87,8 +101,8 @@ function initStage() {
   }
 
   // Build dungeon
-  const textures = createDungeonTextures();
-  dungeonGroup = buildDungeon(scene, maze, textures);
+  const textures = createDungeonTextures(stageConfig);
+  dungeonGroup = buildDungeon(scene, maze, textures, stageConfig);
   
   keyObject = createKey(scene, textures.keyMaterial, maze.cellToWorld(maze.keyCell));
   exitObject = createExit(scene, textures.doorMaterial, maze.cellToWorld(maze.exitCell));
@@ -144,6 +158,8 @@ function update(delta) {
     }
   }
 
+  // Add player's yaw to the cell for minimap rendering
+  currentCell.yaw = player.yaw;
   minimap.render(currentCell, maze.keyCell, maze.exitCell);
 
   if (!hasKey && keyObject && keyObject.group) {
@@ -158,12 +174,31 @@ function update(delta) {
       scene.remove(keyObject.group);
       minimap.discoverKey();
       ui.flashMessage('鍵を手に入れた！出口が開いた。');
+      
+      // ゴールビーコンを作成
+      if (!beaconGroup) {
+        createGoalBeacon(exitObject.anchor);
+      }
     }
   }
 
   if (hasKey && doorProgress < 1) {
     doorProgress = Math.min(1, doorProgress + delta * 0.5);
     exitObject.door.position.y = THREE.MathUtils.lerp(doorClosedY, doorClosedY + 2.4, doorProgress);
+  }
+
+  // ビーコンのアニメーション
+  if (beaconGroup && beaconGroup.userData) {
+    beaconGroup.userData.time += delta;
+    const time = beaconGroup.userData.time;
+    
+    // パルス効果（明るさが変わる）
+    const pulse = (Math.sin(time * 2) + 1) * 0.3 + 0.4;
+    beaconGroup.userData.outerBeam.material.opacity = 0.3 * pulse;
+    beaconGroup.userData.innerBeam.material.opacity = 0.6 * pulse;
+    
+    // ゆっくり回転
+    beaconGroup.rotation.y += delta * 0.3;
   }
 
   if (exitObject) {
@@ -242,14 +277,26 @@ function addLights(scene) {
   scene.add(dir);
 }
 
-function createDungeonTextures() {
-  const wallTexture = createStoneTexture('#4a4a4a', '#3a3a3a');
+function createDungeonTextures(stageConfig) {
+  // Use stage-specific colors
+  const wallColor = stageConfig.wallColor || '#4a4a4a';
+  const floorColor = stageConfig.floorColor || '#2f2f35';
+  
+  // Darker accent for wall texture (convert to darker version)
+  const wallAccentColor = '#' + wallColor.slice(1).split('').map(c => {
+    const num = parseInt(c, 16);
+    return Math.max(0, num - 3).toString(16);
+  }).join('');
+  
+  const wallTexture = createStoneTexture(wallColor, wallAccentColor);
   wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
   wallTexture.repeat.set(1, 1);
 
-  const floorTexture = createStoneFloorTexture();
+  const floorTexture = createStoneFloorTexture(floorColor);
   floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-  floorTexture.repeat.set(maze.width, maze.height);
+  // Use logical dimensions for floor texture
+  const floorRepeat = Math.max(maze.logicalWidth, maze.logicalHeight);
+  floorTexture.repeat.set(floorRepeat, floorRepeat);
 
   const keyMaterial = new THREE.MeshStandardMaterial({
     color: 0xffd66b,
@@ -295,12 +342,12 @@ function createStoneTexture(base, accent) {
   return new THREE.CanvasTexture(canvas);
 }
 
-function createStoneFloorTexture() {
+function createStoneFloorTexture(color = '#2f2f35') {
   const size = 256;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#2f2f35';
+  ctx.fillStyle = color;
   ctx.fillRect(0, 0, size, size);
   ctx.strokeStyle = 'rgba(200, 200, 210, 0.2)';
   ctx.lineWidth = 2;
@@ -343,12 +390,18 @@ function createWoodTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-function buildDungeon(scene, maze, textures) {
+function buildDungeon(scene, maze, textures, stageConfig) {
   const group = new THREE.Group();
-  const floorGeometry = new THREE.PlaneGeometry(maze.width * maze.cellSize, maze.height * maze.cellSize, maze.width, maze.height);
+  
+  // Create floor covering the entire logical grid
+  const floorSize = Math.max(maze.logicalWidth, maze.logicalHeight) * maze.cellSize;
+  const floorGeometry = new THREE.PlaneGeometry(floorSize, floorSize, 1, 1);
+  
+  // Convert hex color string to number for floor
+  const floorColorHex = stageConfig.floorColor.replace('#', '0x');
   const floorMaterial = new THREE.MeshStandardMaterial({
     map: textures.floorTexture,
-    color: 0xffffff,
+    color: parseInt(floorColorHex),
     roughness: 0.8,
   });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -356,40 +409,27 @@ function buildDungeon(scene, maze, textures) {
   floor.receiveShadow = true;
   group.add(floor);
 
+  // Convert hex color string to number for walls
+  const wallColorHex = stageConfig.wallColor.replace('#', '0x');
   const wallMaterial = new THREE.MeshStandardMaterial({
     map: textures.wallTexture,
-    color: 0xffffff,
+    color: parseInt(wallColorHex),
     roughness: 0.7,
     metalness: 0.1,
   });
 
+  // Create walls as full cells
   maze.forEachCell((cell) => {
-    const { x, y, walls } = cell;
-    const world = maze.cellToWorld(cell);
-    const half = maze.cellSize * 0.5;
-    const wallHeight = maze.wallHeight;
-    const thickness = maze.wallThickness;
-
-    if (walls.N) {
-      const mesh = createWallMesh(maze.cellSize, wallHeight, thickness, wallMaterial);
-      mesh.position.set(world.x, wallHeight / 2, world.z - half + thickness / 2);
-      group.add(mesh);
-    }
-    if (walls.W) {
-      const mesh = createWallMesh(maze.cellSize, wallHeight, thickness, wallMaterial);
-      mesh.position.set(world.x - half + thickness / 2, wallHeight / 2, world.z);
-      mesh.rotation.y = Math.PI / 2;
-      group.add(mesh);
-    }
-    if (x === maze.width - 1 && walls.E) {
-      const mesh = createWallMesh(maze.cellSize, wallHeight, thickness, wallMaterial);
-      mesh.position.set(world.x + half - thickness / 2, wallHeight / 2, world.z);
-      mesh.rotation.y = Math.PI / 2;
-      group.add(mesh);
-    }
-    if (y === maze.height - 1 && walls.S) {
-      const mesh = createWallMesh(maze.cellSize, wallHeight, thickness, wallMaterial);
-      mesh.position.set(world.x, wallHeight / 2, world.z + half - thickness / 2);
+    if (cell.isWall) {
+      const world = maze.cellToWorld(cell);
+      const wallHeight = maze.wallHeight;
+      const size = maze.cellSize;
+      
+      const geometry = new THREE.BoxGeometry(size, wallHeight, size);
+      const mesh = new THREE.Mesh(geometry, wallMaterial);
+      mesh.position.set(world.x, wallHeight / 2, world.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       group.add(mesh);
     }
   });
@@ -468,4 +508,46 @@ function formatTime(elapsedMs) {
     .padStart(2, '0');
   const seconds = (totalSeconds % 60).toString().padStart(2, '0');
   return `${minutes}:${seconds}`;
+}
+
+function createGoalBeacon(exitAnchor) {
+  beaconGroup = new THREE.Group();
+  
+  // ゴールから上空に向かう淡い光の線を作成
+  const beamHeight = 30; // 光の高さ
+  const beamGeometry = new THREE.CylinderGeometry(0.15, 0.3, beamHeight, 8);
+  
+  // 外側の光（淡い青緑）
+  const outerMaterial = new THREE.MeshBasicMaterial({
+    color: 0x5cd574,
+    transparent: true,
+    opacity: 0.3,
+    side: THREE.DoubleSide,
+  });
+  const outerBeam = new THREE.Mesh(beamGeometry, outerMaterial);
+  outerBeam.position.y = beamHeight / 2 + 2;
+  beaconGroup.add(outerBeam);
+  
+  // 内側の光（明るい青緑）
+  const innerGeometry = new THREE.CylinderGeometry(0.08, 0.15, beamHeight, 8);
+  const innerMaterial = new THREE.MeshBasicMaterial({
+    color: 0x5cd574,
+    transparent: true,
+    opacity: 0.6,
+    side: THREE.DoubleSide,
+  });
+  const innerBeam = new THREE.Mesh(innerGeometry, innerMaterial);
+  innerBeam.position.y = beamHeight / 2 + 2;
+  beaconGroup.add(innerBeam);
+  
+  // アニメーション用に保存
+  beaconGroup.userData.outerBeam = outerBeam;
+  beaconGroup.userData.innerBeam = innerBeam;
+  beaconGroup.userData.time = 0;
+  
+  // ゴールの位置に配置
+  exitAnchor.add(beaconGroup);
+  scene.add(exitAnchor);
+  
+  return beaconGroup;
 }

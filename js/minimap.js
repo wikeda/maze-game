@@ -4,8 +4,8 @@ export class Minimap {
     this.ctx = canvas.getContext('2d');
     this.maze = maze;
     this.padding = 8;
-    this.scale = (this.canvas.width - this.padding * 2) / this.maze.width;
-    this.visited = Array.from({ length: maze.height }, () => Array(maze.width).fill(false));
+    this.scale = (this.canvas.width - this.padding * 2) / Math.max(maze.logicalWidth, maze.logicalHeight);
+    this.visited = Array.from({ length: maze.logicalHeight }, () => Array(maze.logicalWidth).fill(false));
     this.discovered = { key: false, exit: true }; // Exit always visible, key hidden until found
     this.baseLayer = document.createElement('canvas');
     this.baseLayer.width = this.canvas.width;
@@ -24,18 +24,20 @@ export class Minimap {
     // 外枠だけを描画
     ctx.strokeStyle = 'rgba(120, 130, 145, 0.65)';
     ctx.lineWidth = 2;
+    const width = this.maze.logicalWidth * this.scale;
+    const height = this.maze.logicalHeight * this.scale;
     ctx.beginPath();
     // 上
     ctx.moveTo(offset, offset);
-    ctx.lineTo(offset + this.maze.width * this.scale, offset);
+    ctx.lineTo(offset + width, offset);
     // 右
-    ctx.moveTo(offset + this.maze.width * this.scale, offset);
-    ctx.lineTo(offset + this.maze.width * this.scale, offset + this.maze.height * this.scale);
+    ctx.moveTo(offset + width, offset);
+    ctx.lineTo(offset + width, offset + height);
     // 下
-    ctx.moveTo(offset + this.maze.width * this.scale, offset + this.maze.height * this.scale);
-    ctx.lineTo(offset, offset + this.maze.height * this.scale);
+    ctx.moveTo(offset + width, offset + height);
+    ctx.lineTo(offset, offset + height);
     // 左
-    ctx.moveTo(offset, offset + this.maze.height * this.scale);
+    ctx.moveTo(offset, offset + height);
     ctx.lineTo(offset, offset);
     ctx.stroke();
   }
@@ -60,37 +62,18 @@ export class Minimap {
 
     const offset = this.padding;
     
-    // 探索済みセルの壁を描画
-    ctx.strokeStyle = 'rgba(120, 130, 145, 0.65)';
-    ctx.lineWidth = 2;
-    for (let y = 0; y < this.maze.height; y++) {
-      for (let x = 0; x < this.maze.width; x++) {
+    // 探索済みエリアの壁を描画
+    ctx.fillStyle = 'rgba(60, 70, 80, 0.8)';
+    for (let y = 0; y < this.maze.logicalHeight; y++) {
+      for (let x = 0; x < this.maze.logicalWidth; x++) {
         if (!this.visited[y][x]) continue;
         
         const cell = this.maze.grid[y][x];
-        const left = offset + x * this.scale;
-        const top = offset + y * this.scale;
-        const right = left + this.scale;
-        const bottom = top + this.scale;
-
-        ctx.beginPath();
-        if (cell.walls.N) {
-          ctx.moveTo(left, top);
-          ctx.lineTo(right, top);
+        if (cell.isWall) {
+          const posX = offset + x * this.scale;
+          const posY = offset + y * this.scale;
+          ctx.fillRect(posX + 0.5, posY + 0.5, this.scale - 1, this.scale - 1);
         }
-        if (cell.walls.S) {
-          ctx.moveTo(left, bottom);
-          ctx.lineTo(right, bottom);
-        }
-        if (cell.walls.W) {
-          ctx.moveTo(left, top);
-          ctx.lineTo(left, bottom);
-        }
-        if (cell.walls.E) {
-          ctx.moveTo(right, top);
-          ctx.lineTo(right, bottom);
-        }
-        ctx.stroke();
       }
     }
     
@@ -99,14 +82,18 @@ export class Minimap {
       this._drawMarker(exitCell, 'rgba(92, 213, 116, 0.4)');
     }
     
-    // 探索済みエリア
-    for (let y = 0; y < this.maze.height; y++) {
-      for (let x = 0; x < this.maze.width; x++) {
+    // 探索済みエリア（通路）
+    for (let y = 0; y < this.maze.logicalHeight; y++) {
+      for (let x = 0; x < this.maze.logicalWidth; x++) {
         if (!this.visited[y][x]) continue;
-        const posX = offset + x * this.scale;
-        const posY = offset + y * this.scale;
-        ctx.fillStyle = 'rgba(70, 130, 190, 0.45)';
-        ctx.fillRect(posX + 1, posY + 1, this.scale - 2, this.scale - 2);
+        
+        const cell = this.maze.grid[y][x];
+        if (!cell.isWall) {
+          const posX = offset + x * this.scale;
+          const posY = offset + y * this.scale;
+          ctx.fillStyle = 'rgba(70, 130, 190, 0.45)';
+          ctx.fillRect(posX + 1, posY + 1, this.scale - 2, this.scale - 2);
+        }
       }
     }
 

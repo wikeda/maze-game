@@ -249,7 +249,9 @@ function createDungeonTextures() {
 
   const floorTexture = createStoneFloorTexture();
   floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-  floorTexture.repeat.set(maze.width, maze.height);
+  // Use logical dimensions for floor texture
+  const floorRepeat = Math.max(maze.logicalWidth, maze.logicalHeight);
+  floorTexture.repeat.set(floorRepeat, floorRepeat);
 
   const keyMaterial = new THREE.MeshStandardMaterial({
     color: 0xffd66b,
@@ -345,7 +347,10 @@ function createWoodTexture() {
 
 function buildDungeon(scene, maze, textures) {
   const group = new THREE.Group();
-  const floorGeometry = new THREE.PlaneGeometry(maze.width * maze.cellSize, maze.height * maze.cellSize, maze.width, maze.height);
+  
+  // Create floor covering the entire logical grid
+  const floorSize = Math.max(maze.logicalWidth, maze.logicalHeight) * maze.cellSize;
+  const floorGeometry = new THREE.PlaneGeometry(floorSize, floorSize, 1, 1);
   const floorMaterial = new THREE.MeshStandardMaterial({
     map: textures.floorTexture,
     color: 0xffffff,
@@ -363,33 +368,18 @@ function buildDungeon(scene, maze, textures) {
     metalness: 0.1,
   });
 
+  // Create walls as full cells
   maze.forEachCell((cell) => {
-    const { x, y, walls } = cell;
-    const world = maze.cellToWorld(cell);
-    const half = maze.cellSize * 0.5;
-    const wallHeight = maze.wallHeight;
-    const thickness = maze.wallThickness;
-
-    if (walls.N) {
-      const mesh = createWallMesh(maze.cellSize, wallHeight, thickness, wallMaterial);
-      mesh.position.set(world.x, wallHeight / 2, world.z - half + thickness / 2);
-      group.add(mesh);
-    }
-    if (walls.W) {
-      const mesh = createWallMesh(maze.cellSize, wallHeight, thickness, wallMaterial);
-      mesh.position.set(world.x - half + thickness / 2, wallHeight / 2, world.z);
-      mesh.rotation.y = Math.PI / 2;
-      group.add(mesh);
-    }
-    if (x === maze.width - 1 && walls.E) {
-      const mesh = createWallMesh(maze.cellSize, wallHeight, thickness, wallMaterial);
-      mesh.position.set(world.x + half - thickness / 2, wallHeight / 2, world.z);
-      mesh.rotation.y = Math.PI / 2;
-      group.add(mesh);
-    }
-    if (y === maze.height - 1 && walls.S) {
-      const mesh = createWallMesh(maze.cellSize, wallHeight, thickness, wallMaterial);
-      mesh.position.set(world.x, wallHeight / 2, world.z + half - thickness / 2);
+    if (cell.isWall) {
+      const world = maze.cellToWorld(cell);
+      const wallHeight = maze.wallHeight;
+      const size = maze.cellSize;
+      
+      const geometry = new THREE.BoxGeometry(size, wallHeight, size);
+      const mesh = new THREE.Mesh(geometry, wallMaterial);
+      mesh.position.set(world.x, wallHeight / 2, world.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       group.add(mesh);
     }
   });

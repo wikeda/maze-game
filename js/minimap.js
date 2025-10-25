@@ -78,8 +78,8 @@ export class Minimap {
 
     const offset = this.padding;
     
-    // 探索済みエリアの壁を描画
-    ctx.fillStyle = 'rgba(60, 70, 80, 0.8)';
+    // 探索済みエリアの壁を描画（濃いグレー）
+    ctx.fillStyle = 'rgba(120, 120, 130, 0.95)';
     for (let y = 0; y < this.maze.logicalHeight; y++) {
       for (let x = 0; x < this.maze.logicalWidth; x++) {
         if (!this.visited[y][x]) continue;
@@ -98,7 +98,7 @@ export class Minimap {
       this._drawMarker(exitCell, 'rgba(92, 213, 116, 0.4)');
     }
     
-    // 探索済みエリア（通路）
+    // 探索済みエリア（通路 - 明るい青）
     for (let y = 0; y < this.maze.logicalHeight; y++) {
       for (let x = 0; x < this.maze.logicalWidth; x++) {
         if (!this.visited[y][x]) continue;
@@ -107,7 +107,7 @@ export class Minimap {
         if (!cell.isWall) {
           const posX = offset + x * this.scale;
           const posY = offset + y * this.scale;
-          ctx.fillStyle = 'rgba(70, 130, 190, 0.45)';
+          ctx.fillStyle = 'rgba(120, 180, 220, 0.65)';
           ctx.fillRect(posX + 1, posY + 1, this.scale - 2, this.scale - 2);
         }
       }

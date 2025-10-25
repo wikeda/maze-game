@@ -20,23 +20,25 @@ export class StageManager {
       3: { 
         size: 5, 
         name: 'Stage 3',
-        skyColor: 0xff6b6b,  // サルモンレッド
-        wallColor: '#FF8E8E',  // 明るい赤系の壁
-        floorColor: '#FF6B6B'  // 空と同じ赤の床
+        skyColor: 0xfb923c,  // オレンジ
+        wallColor: '#FFB366',  // 明るいオレンジ系の壁
+        floorColor: '#FB923C'  // 空と同じオレンジの床
+
       },
       4: { 
         size: 6, 
         name: 'Stage 4',
-        skyColor: 0xa78bfa,  // パープル
-        wallColor: '#C9B7FB',  // 明るい紫系の壁
-        floorColor: '#A78BFA'  // 空と同じ紫の床
+        skyColor: 0xff6b6b,  // サルモンレッド
+        wallColor: '#FF8E8E',  // 明るい赤系の壁
+        floorColor: '#FF6B6B'  // 空と同じ赤の床
+
       },
       5: { 
         size: 8, 
         name: 'Stage 5',
-        skyColor: 0xfb923c,  // オレンジ
-        wallColor: '#FFB366',  // 明るいオレンジ系の壁
-        floorColor: '#FB923C'  // 空と同じオレンジの床
+        skyColor: 0xa78bfa,  // パープル
+        wallColor: '#C9B7FB',  // 明るい紫系の壁
+        floorColor: '#A78BFA'  // 空と同じ紫の床
       },
     };
   }

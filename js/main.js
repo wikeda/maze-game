@@ -180,20 +180,28 @@ function update(delta) {
       if (stageManager.nextStage()) {
         ui.showMessage(
           `ステージ${stageManager.currentStage - 1}クリア！\n` +
-          `ステージ${stageManager.currentStage}へ...`,
+          `ステージ${stageManager.currentStage}へ...\nクリックで次へ`,
           () => {
-            initStage();
-            gameCleared = false;
+            try {
+              initStage();
+              gameCleared = false;
+            } catch (error) {
+              console.error('Error initializing stage:', error);
+            }
           }
         );
       } else {
         ui.showMessage(
           `全ステージクリア！\n` +
-          `総歩数: ${scoreBoard.steps} / 総時間: ${formatTime(scoreBoard.elapsed)}`,
+          `総歩数: ${scoreBoard.steps} / 総時間: ${formatTime(scoreBoard.elapsed)}\nクリックでリスタート`,
           () => {
-            stageManager.reset();
-            initStage();
-            gameCleared = false;
+            try {
+              stageManager.reset();
+              initStage();
+              gameCleared = false;
+            } catch (error) {
+              console.error('Error restarting game:', error);
+            }
           }
         );
       }

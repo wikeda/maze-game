@@ -114,6 +114,28 @@ body {
   border: 2px solid rgba(255, 255, 255, 0.15);
 }
 
+.joystick-guide {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+
+.joystick-guide.horizontal {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.joystick-guide.vertical {
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
 #joystick-thumb {
   position: absolute;
   top: 50%;

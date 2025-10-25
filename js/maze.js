@@ -73,7 +73,11 @@ export class Maze {
   }
 
   _placeKeyAndExit() {
-    this.startCell = this.grid[0][0];
+    // 開始位置をランダムに選択
+    const startX = Math.floor(Math.random() * this.width);
+    const startY = Math.floor(Math.random() * this.height);
+    this.startCell = this.grid[startY][startX];
+    
     const distancesFromStart = this._calculateDistances(this.startCell);
     this.keyCell = this._farthestCell(distancesFromStart);
     const distancesFromKey = this._calculateDistances(this.keyCell);

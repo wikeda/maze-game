@@ -5,52 +5,103 @@ import { VirtualJoystick } from './controls.js';
 import { Minimap } from './minimap.js';
 import { ScoreBoard } from './score.js';
 import { UIManager } from './ui.js';
+import { StageManager } from './stage.js';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = true;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x101015);
-scene.fog = new THREE.FogExp2(0x0b0b10, 0.055);
+scene.background = new THREE.Color(0x252530);
+scene.fog = new THREE.FogExp2(0x1a1a20, 0.04);
 
 const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 400);
 const clock = new THREE.Clock();
 
 const ui = new UIManager();
-const maze = new Maze(20, 20, 4);
-const minimap = new Minimap(document.getElementById('minimap'), maze);
-const scoreBoard = new ScoreBoard(
-  document.getElementById('step-counter'),
-  document.getElementById('time-counter')
-);
+const stageManager = new StageManager();
 
-const joystick = new VirtualJoystick(
-  document.getElementById('joystick-base'),
-  document.getElementById('joystick-thumb')
-);
-
-const player = new Player(camera, maze);
-let previousCell = player.getCell();
-if (previousCell) {
-  minimap.markVisited(previousCell);
-}
-
-addLights(scene);
-const textures = createDungeonTextures();
-buildDungeon(scene, maze, textures);
-
-const keyObject = createKey(scene, textures.keyMaterial, maze.cellToWorld(maze.keyCell));
-const exitObject = createExit(scene, textures.doorMaterial, maze.cellToWorld(maze.exitCell));
-
+let maze, minimap, scoreBoard, joystick, player;
+let dungeonGroup = null;
+let keyObject = null;
+let exitObject = null;
 let hasKey = false;
 let doorProgress = 0;
 let gameCleared = false;
+let previousCell = null;
 const keyWorldPosition = new THREE.Vector3();
 const exitWorldPosition = new THREE.Vector3();
-const doorClosedY = exitObject.door.position.y;
+let doorClosedY = 0;
+
+function initStage() {
+  // Clear previous stage
+  if (dungeonGroup) {
+    scene.remove(dungeonGroup);
+  }
+  if (keyObject && keyObject.group) {
+    scene.remove(keyObject.group);
+  }
+  if (exitObject && exitObject.anchor) {
+    scene.remove(exitObject.anchor);
+  }
+
+  // Clear all children except lights
+  const children = [...scene.children];
+  children.forEach(child => {
+    if (child.type !== 'AmbientLight' && child.type !== 'DirectionalLight') {
+      scene.remove(child);
+    }
+  });
+
+  // Add lights if not already present
+  if (scene.children.length === 0 || !scene.children.find(c => c.type === 'AmbientLight')) {
+    addLights(scene);
+  }
+
+  // Get stage configuration
+  const stageConfig = stageManager.getCurrentStageConfig();
+  const size = stageConfig.size;
+  
+  // Initialize game objects
+  maze = new Maze(size, size, 4);
+  minimap = new Minimap(document.getElementById('minimap'), maze);
+  scoreBoard = new ScoreBoard(
+    document.getElementById('step-counter'),
+    document.getElementById('time-counter')
+  );
+  
+  joystick = new VirtualJoystick(
+    document.getElementById('btn-up'),
+    document.getElementById('btn-down'),
+    document.getElementById('btn-left'),
+    document.getElementById('btn-right')
+  );
+
+  player = new Player(camera, maze);
+  previousCell = player.getCell();
+  if (previousCell) {
+    minimap.markVisited(previousCell);
+  }
+
+  // Build dungeon
+  const textures = createDungeonTextures();
+  dungeonGroup = buildDungeon(scene, maze, textures);
+  
+  keyObject = createKey(scene, textures.keyMaterial, maze.cellToWorld(maze.keyCell));
+  exitObject = createExit(scene, textures.doorMaterial, maze.cellToWorld(maze.exitCell));
+  
+  hasKey = false;
+  doorProgress = 0;
+  gameCleared = false;
+  doorClosedY = exitObject.door.position.y;
+  
+  // Show stage message
+  ui.flashMessage(`ステージ${stageManager.currentStage}開始！`);
+  scoreBoard.reset();
+}
 
 function onResize() {
   const width = window.innerWidth;
@@ -63,6 +114,8 @@ function onResize() {
 window.addEventListener('resize', onResize);
 onResize();
 ui.hideLoading();
+
+initStage();
 
 function update(delta) {
   if (gameCleared) {
@@ -93,11 +146,11 @@ function update(delta) {
 
   minimap.render(currentCell, maze.keyCell, maze.exitCell);
 
-  if (!hasKey && keyObject.group) {
+  if (!hasKey && keyObject && keyObject.group) {
     keyObject.group.rotation.y += delta * 0.7;
   }
 
-  if (!hasKey && keyObject.mesh) {
+  if (!hasKey && keyObject && keyObject.mesh) {
     keyObject.mesh.getWorldPosition(keyWorldPosition);
     const distanceToKey = player.getWorldPosition().distanceTo(keyWorldPosition);
     if (distanceToKey < 1.2) {
@@ -113,7 +166,7 @@ function update(delta) {
     exitObject.door.position.y = THREE.MathUtils.lerp(doorClosedY, doorClosedY + 2.4, doorProgress);
   }
 
-  if (hasKey && exitObject) {
+  if (exitObject) {
     const playerPos = player.getWorldPosition();
     exitObject.anchor.getWorldPosition(exitWorldPosition);
     const horizontalDistance = Math.hypot(
@@ -121,9 +174,43 @@ function update(delta) {
       playerPos.z - exitWorldPosition.z
     );
     if (horizontalDistance < 1.2) {
-      gameCleared = true;
-      scoreBoard.stop();
-      ui.showMessage(`脱出成功！\n歩数: ${scoreBoard.steps} / 時間: ${formatTime(scoreBoard.elapsed)}`);
+      if (hasKey) {
+        // 鍵を持っている場合、ステージクリア
+        gameCleared = true;
+        scoreBoard.stop();
+        
+        if (stageManager.nextStage()) {
+          ui.showMessage(
+            `ステージ${stageManager.currentStage - 1}クリア！\n` +
+            `ステージ${stageManager.currentStage}へ...\nクリックで次へ`,
+            () => {
+              try {
+                initStage();
+                gameCleared = false;
+              } catch (error) {
+                console.error('Error initializing stage:', error);
+              }
+            }
+          );
+        } else {
+          ui.showMessage(
+            `全ステージクリア！\n` +
+            `総歩数: ${scoreBoard.steps} / 総時間: ${formatTime(scoreBoard.elapsed)}\nクリックでリスタート`,
+            () => {
+              try {
+                stageManager.reset();
+                initStage();
+                gameCleared = false;
+              } catch (error) {
+                console.error('Error restarting game:', error);
+              }
+            }
+          );
+        }
+      } else {
+        // 鍵を持っていない場合、メッセージを表示
+        ui.flashMessage('鍵を探さないと・・・');
+      }
     }
   }
 }
@@ -138,13 +225,15 @@ function animate() {
 animate();
 
 function addLights(scene) {
-  const ambient = new THREE.AmbientLight(0x222226, 0.9);
+  const ambient = new THREE.AmbientLight(0x444448, 1.2);
   scene.add(ambient);
 
-  const dir = new THREE.DirectionalLight(0xffc873, 0.4);
+  const dir = new THREE.DirectionalLight(0xffc873, 0.8);
   dir.position.set(20, 40, 20);
   dir.castShadow = true;
   dir.shadow.mapSize.set(2048, 2048);
+  dir.shadow.bias = -0.0001;
+  dir.shadow.radius = 8;
   const d = 60;
   dir.shadow.camera.left = -d;
   dir.shadow.camera.right = d;

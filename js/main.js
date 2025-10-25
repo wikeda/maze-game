@@ -166,7 +166,7 @@ function update(delta) {
     exitObject.door.position.y = THREE.MathUtils.lerp(doorClosedY, doorClosedY + 2.4, doorProgress);
   }
 
-  if (hasKey && exitObject) {
+  if (exitObject) {
     const playerPos = player.getWorldPosition();
     exitObject.anchor.getWorldPosition(exitWorldPosition);
     const horizontalDistance = Math.hypot(
@@ -174,36 +174,42 @@ function update(delta) {
       playerPos.z - exitWorldPosition.z
     );
     if (horizontalDistance < 1.2) {
-      gameCleared = true;
-      scoreBoard.stop();
-      
-      if (stageManager.nextStage()) {
-        ui.showMessage(
-          `ステージ${stageManager.currentStage - 1}クリア！\n` +
-          `ステージ${stageManager.currentStage}へ...\nクリックで次へ`,
-          () => {
-            try {
-              initStage();
-              gameCleared = false;
-            } catch (error) {
-              console.error('Error initializing stage:', error);
+      if (hasKey) {
+        // 鍵を持っている場合、ステージクリア
+        gameCleared = true;
+        scoreBoard.stop();
+        
+        if (stageManager.nextStage()) {
+          ui.showMessage(
+            `ステージ${stageManager.currentStage - 1}クリア！\n` +
+            `ステージ${stageManager.currentStage}へ...\nクリックで次へ`,
+            () => {
+              try {
+                initStage();
+                gameCleared = false;
+              } catch (error) {
+                console.error('Error initializing stage:', error);
+              }
             }
-          }
-        );
+          );
+        } else {
+          ui.showMessage(
+            `全ステージクリア！\n` +
+            `総歩数: ${scoreBoard.steps} / 総時間: ${formatTime(scoreBoard.elapsed)}\nクリックでリスタート`,
+            () => {
+              try {
+                stageManager.reset();
+                initStage();
+                gameCleared = false;
+              } catch (error) {
+                console.error('Error restarting game:', error);
+              }
+            }
+          );
+        }
       } else {
-        ui.showMessage(
-          `全ステージクリア！\n` +
-          `総歩数: ${scoreBoard.steps} / 総時間: ${formatTime(scoreBoard.elapsed)}\nクリックでリスタート`,
-          () => {
-            try {
-              stageManager.reset();
-              initStage();
-              gameCleared = false;
-            } catch (error) {
-              console.error('Error restarting game:', error);
-            }
-          }
-        );
+        // 鍵を持っていない場合、メッセージを表示
+        ui.flashMessage('鍵を探さないと・・・');
       }
     }
   }

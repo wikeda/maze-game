@@ -15,12 +15,25 @@
       <div class="score-item" id="time-counter">時間: 00:00</div>
     </div>
     <div id="message-panel"></div>
-    <div id="joystick-container">
-      <div id="joystick-base">
-        <div class="joystick-guide horizontal"></div>
-        <div class="joystick-guide vertical"></div>
-        <div id="joystick-thumb"></div>
-      </div>
+    
+    <!-- 上下ボタン (左下) -->
+    <div id="vertical-controls" class="control-group">
+      <button id="btn-up" class="control-btn up-btn">
+        <span class="control-icon">↑</span>
+      </button>
+      <button id="btn-down" class="control-btn down-btn">
+        <span class="control-icon">↓</span>
+      </button>
+    </div>
+    
+    <!-- 左右ボタン (右下) -->
+    <div id="horizontal-controls" class="control-group">
+      <button id="btn-left" class="control-btn left-btn">
+        <span class="control-icon">←</span>
+      </button>
+      <button id="btn-right" class="control-btn right-btn">
+        <span class="control-icon">→</span>
+      </button>
     </div>
   </div>
   <canvas id="game"></canvas>

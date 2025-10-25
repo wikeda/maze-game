@@ -1,15 +1,13 @@
-const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
 export class VirtualJoystick {
-  constructor(baseElement, thumbElement) {
-    this.base = baseElement;
-    this.thumb = thumbElement;
-    this.active = false;
-    this.pointerId = null;
-    this.offset = { x: 0, y: 0 };
-    this.radius = this.base.clientWidth * 0.5;
-    this.normalized = { forward: 0, turn: 0 };
-    this.keyboard = {
+  constructor(btnUp, btnDown, btnLeft, btnRight) {
+    this.buttons = {
+      up: btnUp,
+      down: btnDown,
+      left: btnLeft,
+      right: btnRight,
+    };
+    
+    this.input = {
       forward: 0,
       turn: 0,
     };
@@ -18,94 +16,70 @@ export class VirtualJoystick {
   }
 
   _bindEvents() {
-    window.addEventListener('resize', () => {
-      this.radius = this.base.clientWidth * 0.5;
-    });
+    // 上下ボタン
+    this.buttons.up.addEventListener('touchstart', (e) => this._onButtonPress('up', true, e));
+    this.buttons.up.addEventListener('touchend', (e) => this._onButtonPress('up', false, e));
+    this.buttons.up.addEventListener('touchcancel', (e) => this._onButtonPress('up', false, e));
+    
+    this.buttons.down.addEventListener('touchstart', (e) => this._onButtonPress('down', true, e));
+    this.buttons.down.addEventListener('touchend', (e) => this._onButtonPress('down', false, e));
+    this.buttons.down.addEventListener('touchcancel', (e) => this._onButtonPress('down', false, e));
+    
+    // 左右ボタン
+    this.buttons.left.addEventListener('touchstart', (e) => this._onButtonPress('left', true, e));
+    this.buttons.left.addEventListener('touchend', (e) => this._onButtonPress('left', false, e));
+    this.buttons.left.addEventListener('touchcancel', (e) => this._onButtonPress('left', false, e));
+    
+    this.buttons.right.addEventListener('touchstart', (e) => this._onButtonPress('right', true, e));
+    this.buttons.right.addEventListener('touchend', (e) => this._onButtonPress('right', false, e));
+    this.buttons.right.addEventListener('touchcancel', (e) => this._onButtonPress('right', false, e));
 
-    this.base.addEventListener('pointerdown', (event) => this._onPointerDown(event));
-    window.addEventListener('pointermove', (event) => this._onPointerMove(event));
-    window.addEventListener('pointerup', (event) => this._onPointerUp(event));
-    window.addEventListener('pointercancel', (event) => this._onPointerUp(event));
+    // マウスイベント（デスクトップ）
+    this.buttons.up.addEventListener('mousedown', (e) => this._onButtonPress('up', true, e));
+    this.buttons.up.addEventListener('mouseup', (e) => this._onButtonPress('up', false, e));
+    this.buttons.up.addEventListener('mouseleave', (e) => this._onButtonPress('up', false, e));
+    
+    this.buttons.down.addEventListener('mousedown', (e) => this._onButtonPress('down', true, e));
+    this.buttons.down.addEventListener('mouseup', (e) => this._onButtonPress('down', false, e));
+    this.buttons.down.addEventListener('mouseleave', (e) => this._onButtonPress('down', false, e));
+    
+    this.buttons.left.addEventListener('mousedown', (e) => this._onButtonPress('left', true, e));
+    this.buttons.left.addEventListener('mouseup', (e) => this._onButtonPress('left', false, e));
+    this.buttons.left.addEventListener('mouseleave', (e) => this._onButtonPress('left', false, e));
+    
+    this.buttons.right.addEventListener('mousedown', (e) => this._onButtonPress('right', true, e));
+    this.buttons.right.addEventListener('mouseup', (e) => this._onButtonPress('right', false, e));
+    this.buttons.right.addEventListener('mouseleave', (e) => this._onButtonPress('right', false, e));
 
+    // キーボード
     window.addEventListener('keydown', (event) => this._onKey(event, true));
     window.addEventListener('keyup', (event) => this._onKey(event, false));
   }
 
-  _onPointerDown(event) {
-    if (this.active) return;
-    this.base.setPointerCapture(event.pointerId);
-    this.active = true;
-    this.pointerId = event.pointerId;
-    this._updateOffset(event);
-  }
-
-  _onPointerMove(event) {
-    if (!this.active || event.pointerId !== this.pointerId) return;
-    this._updateOffset(event);
-  }
-
-  _onPointerUp(event) {
-    if (!this.active || event.pointerId !== this.pointerId) return;
-    this.base.releasePointerCapture(event.pointerId);
-    this.active = false;
-    this.pointerId = null;
-    this.offset = { x: 0, y: 0 };
-    this.normalized = { forward: 0, turn: 0 };
-    this._updateThumb();
-  }
-
-  _updateOffset(event) {
-    const rect = this.base.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const dx = event.clientX - centerX;
-    const dy = event.clientY - centerY;
-    const distance = Math.hypot(dx, dy);
-    const max = this.radius;
-
-    // 斜め入力を無効化し、より強い軸方向の入力のみを採用
-    const absX = Math.abs(dx);
-    const absY = Math.abs(dy);
-    let limitedX = 0;
-    let limitedY = 0;
-
-    if (absX > absY) {
-      // X軸の方が強い場合
-      limitedX = dx;
-      limitedY = 0;
-    } else if (absY > absX) {
-      // Y軸の方が強い場合
-      limitedX = 0;
-      limitedY = dy;
+  _onButtonPress(button, pressed, event) {
+    event.preventDefault();
+    
+    const btn = this.buttons[button];
+    if (pressed) {
+      btn.classList.add('active');
     } else {
-      // 同じ強さの場合は何もしない
-      limitedX = 0;
-      limitedY = 0;
+      btn.classList.remove('active');
     }
 
-    // 半径を超える場合は制限
-    if (Math.abs(limitedX) > max) {
-      limitedX = limitedX > 0 ? max : -max;
+    switch (button) {
+      case 'up':
+        this.input.forward = pressed ? 1 : 0;
+        break;
+      case 'down':
+        this.input.forward = pressed ? -1 : (this.input.forward === 1 ? 1 : 0);
+        break;
+      case 'left':
+        this.input.turn = pressed ? -1 : 0;
+        break;
+      case 'right':
+        this.input.turn = pressed ? 1 : (this.input.turn === -1 ? -1 : 0);
+        break;
     }
-    if (Math.abs(limitedY) > max) {
-      limitedY = limitedY > 0 ? max : -max;
-    }
-
-    this.offset.x = limitedX;
-    this.offset.y = limitedY;
-
-    const normalizedX = clamp(this.offset.x / max, -1, 1);
-    const normalizedY = clamp(this.offset.y / max, -1, 1);
-    this.normalized = {
-      forward: -normalizedY,
-      turn: normalizedX,
-    };
-
-    this._updateThumb();
-  }
-
-  _updateThumb() {
-    this.thumb.style.transform = `translate(calc(-50% + ${this.offset.x}px), calc(-50% + ${this.offset.y}px))`;
   }
 
   _onKey(event, pressed) {
@@ -113,22 +87,26 @@ export class VirtualJoystick {
       case 'ArrowUp':
       case 'w':
       case 'W':
-        this.keyboard.forward = pressed ? 1 : this.keyboard.forward === -1 ? -1 : 0;
+        this.input.forward = pressed ? 1 : (this.input.forward === -1 ? -1 : 0);
+        this.buttons.up.classList.toggle('active', pressed);
         break;
       case 'ArrowDown':
       case 's':
       case 'S':
-        this.keyboard.forward = pressed ? -1 : this.keyboard.forward === 1 ? 1 : 0;
+        this.input.forward = pressed ? -1 : (this.input.forward === 1 ? 1 : 0);
+        this.buttons.down.classList.toggle('active', pressed);
         break;
       case 'ArrowLeft':
       case 'a':
       case 'A':
-        this.keyboard.turn = pressed ? -1 : this.keyboard.turn === 1 ? 1 : 0;
+        this.input.turn = pressed ? -1 : (this.input.turn === 1 ? 1 : 0);
+        this.buttons.left.classList.toggle('active', pressed);
         break;
       case 'ArrowRight':
       case 'd':
       case 'D':
-        this.keyboard.turn = pressed ? 1 : this.keyboard.turn === -1 ? -1 : 0;
+        this.input.turn = pressed ? 1 : (this.input.turn === -1 ? -1 : 0);
+        this.buttons.right.classList.toggle('active', pressed);
         break;
       default:
         return;
@@ -137,8 +115,9 @@ export class VirtualJoystick {
   }
 
   getInput() {
-    const forward = this.normalized.forward || this.keyboard.forward;
-    const turn = this.normalized.turn || this.keyboard.turn;
-    return { forward, turn };
+    return {
+      forward: this.input.forward,
+      turn: this.input.turn,
+    };
   }
 }

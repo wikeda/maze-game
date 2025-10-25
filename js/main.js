@@ -29,8 +29,10 @@ const scoreBoard = new ScoreBoard(
 );
 
 const joystick = new VirtualJoystick(
-  document.getElementById('joystick-base'),
-  document.getElementById('joystick-thumb')
+  document.getElementById('btn-up'),
+  document.getElementById('btn-down'),
+  document.getElementById('btn-left'),
+  document.getElementById('btn-right')
 );
 
 const player = new Player(camera, maze);

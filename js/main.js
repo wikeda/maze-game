@@ -5,6 +5,7 @@ import { VirtualJoystick } from './controls.js';
 import { Minimap } from './minimap.js';
 import { ScoreBoard } from './score.js';
 import { UIManager } from './ui.js';
+import { StageManager } from './stage.js';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -21,39 +22,86 @@ const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerH
 const clock = new THREE.Clock();
 
 const ui = new UIManager();
-const maze = new Maze(20, 20, 4);
-const minimap = new Minimap(document.getElementById('minimap'), maze);
-const scoreBoard = new ScoreBoard(
-  document.getElementById('step-counter'),
-  document.getElementById('time-counter')
-);
+const stageManager = new StageManager();
 
-const joystick = new VirtualJoystick(
-  document.getElementById('btn-up'),
-  document.getElementById('btn-down'),
-  document.getElementById('btn-left'),
-  document.getElementById('btn-right')
-);
-
-const player = new Player(camera, maze);
-let previousCell = player.getCell();
-if (previousCell) {
-  minimap.markVisited(previousCell);
-}
-
-addLights(scene);
-const textures = createDungeonTextures();
-buildDungeon(scene, maze, textures);
-
-const keyObject = createKey(scene, textures.keyMaterial, maze.cellToWorld(maze.keyCell));
-const exitObject = createExit(scene, textures.doorMaterial, maze.cellToWorld(maze.exitCell));
-
+let maze, minimap, scoreBoard, joystick, player;
+let dungeonGroup = null;
+let keyObject = null;
+let exitObject = null;
 let hasKey = false;
 let doorProgress = 0;
 let gameCleared = false;
+let previousCell = null;
 const keyWorldPosition = new THREE.Vector3();
 const exitWorldPosition = new THREE.Vector3();
-const doorClosedY = exitObject.door.position.y;
+let doorClosedY = 0;
+
+function initStage() {
+  // Clear previous stage
+  if (dungeonGroup) {
+    scene.remove(dungeonGroup);
+  }
+  if (keyObject && keyObject.group) {
+    scene.remove(keyObject.group);
+  }
+  if (exitObject && exitObject.anchor) {
+    scene.remove(exitObject.anchor);
+  }
+
+  // Clear all children except lights
+  const children = [...scene.children];
+  children.forEach(child => {
+    if (child.type !== 'AmbientLight' && child.type !== 'DirectionalLight') {
+      scene.remove(child);
+    }
+  });
+
+  // Add lights if not already present
+  if (scene.children.length === 0 || !scene.children.find(c => c.type === 'AmbientLight')) {
+    addLights(scene);
+  }
+
+  // Get stage configuration
+  const stageConfig = stageManager.getCurrentStageConfig();
+  const size = stageConfig.size;
+  
+  // Initialize game objects
+  maze = new Maze(size, size, 4);
+  minimap = new Minimap(document.getElementById('minimap'), maze);
+  scoreBoard = new ScoreBoard(
+    document.getElementById('step-counter'),
+    document.getElementById('time-counter')
+  );
+  
+  joystick = new VirtualJoystick(
+    document.getElementById('btn-up'),
+    document.getElementById('btn-down'),
+    document.getElementById('btn-left'),
+    document.getElementById('btn-right')
+  );
+
+  player = new Player(camera, maze);
+  previousCell = player.getCell();
+  if (previousCell) {
+    minimap.markVisited(previousCell);
+  }
+
+  // Build dungeon
+  const textures = createDungeonTextures();
+  dungeonGroup = buildDungeon(scene, maze, textures);
+  
+  keyObject = createKey(scene, textures.keyMaterial, maze.cellToWorld(maze.keyCell));
+  exitObject = createExit(scene, textures.doorMaterial, maze.cellToWorld(maze.exitCell));
+  
+  hasKey = false;
+  doorProgress = 0;
+  gameCleared = false;
+  doorClosedY = exitObject.door.position.y;
+  
+  // Show stage message
+  ui.flashMessage(`ステージ${stageManager.currentStage}開始！`);
+  scoreBoard.reset();
+}
 
 function onResize() {
   const width = window.innerWidth;
@@ -66,6 +114,8 @@ function onResize() {
 window.addEventListener('resize', onResize);
 onResize();
 ui.hideLoading();
+
+initStage();
 
 function update(delta) {
   if (gameCleared) {
@@ -96,11 +146,11 @@ function update(delta) {
 
   minimap.render(currentCell, maze.keyCell, maze.exitCell);
 
-  if (!hasKey && keyObject.group) {
+  if (!hasKey && keyObject && keyObject.group) {
     keyObject.group.rotation.y += delta * 0.7;
   }
 
-  if (!hasKey && keyObject.mesh) {
+  if (!hasKey && keyObject && keyObject.mesh) {
     keyObject.mesh.getWorldPosition(keyWorldPosition);
     const distanceToKey = player.getWorldPosition().distanceTo(keyWorldPosition);
     if (distanceToKey < 1.2) {
@@ -126,7 +176,27 @@ function update(delta) {
     if (horizontalDistance < 1.2) {
       gameCleared = true;
       scoreBoard.stop();
-      ui.showMessage(`脱出成功！\n歩数: ${scoreBoard.steps} / 時間: ${formatTime(scoreBoard.elapsed)}`);
+      
+      if (stageManager.nextStage()) {
+        ui.showMessage(
+          `ステージ${stageManager.currentStage - 1}クリア！\n` +
+          `ステージ${stageManager.currentStage}へ...`,
+          () => {
+            initStage();
+            gameCleared = false;
+          }
+        );
+      } else {
+        ui.showMessage(
+          `全ステージクリア！\n` +
+          `総歩数: ${scoreBoard.steps} / 総時間: ${formatTime(scoreBoard.elapsed)}`,
+          () => {
+            stageManager.reset();
+            initStage();
+            gameCleared = false;
+          }
+        );
+      }
     }
   }
 }

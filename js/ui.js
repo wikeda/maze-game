@@ -10,10 +10,19 @@ export class UIManager {
     }
   }
 
-  showMessage(text) {
+  showMessage(text, callback = null) {
     if (!this.messagePanel) return;
     this.messagePanel.textContent = text;
     this.messagePanel.style.display = 'block';
+    
+    if (callback) {
+      this.messagePanel.onclick = () => {
+        this.hideMessage();
+        callback();
+      };
+    } else {
+      this.messagePanel.onclick = null;
+    }
   }
 
   hideMessage() {

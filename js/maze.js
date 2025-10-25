@@ -174,8 +174,8 @@ export class Maze {
   }
 
   cellToWorld(cell) {
-    const originX = -this.width * this.cellSize * 0.5;
-    const originZ = -this.height * this.cellSize * 0.5;
+    const originX = -this.logicalWidth * this.cellSize * 0.5;
+    const originZ = -this.logicalHeight * this.cellSize * 0.5;
     return {
       x: originX + cell.x * this.cellSize + this.cellSize * 0.5,
       z: originZ + cell.y * this.cellSize + this.cellSize * 0.5,
@@ -183,8 +183,8 @@ export class Maze {
   }
 
   worldToCell(x, z) {
-    const originX = -this.width * this.cellSize * 0.5;
-    const originZ = -this.height * this.cellSize * 0.5;
+    const originX = -this.logicalWidth * this.cellSize * 0.5;
+    const originZ = -this.logicalHeight * this.cellSize * 0.5;
     const cx = Math.floor((x - originX) / this.cellSize);
     const cy = Math.floor((z - originZ) / this.cellSize);
     if (!this._inBounds(cx, cy)) {

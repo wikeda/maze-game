@@ -80,7 +80,7 @@ function initStage() {
   scene.fog = new THREE.FogExp2(fogColor, 0.04);
   
   // Initialize game objects
-  maze = new Maze(size, size, 4);
+  maze = new Maze(size, size, 2);
   minimap = new Minimap(document.getElementById('minimap'), maze);
   scoreBoard = new ScoreBoard(
     document.getElementById('step-counter'),

@@ -70,6 +70,15 @@ function initStage() {
   const stageConfig = stageManager.getCurrentStageConfig();
   const size = stageConfig.size;
   
+  // Update stage colors
+  scene.background = new THREE.Color(stageConfig.skyColor);
+  // Fog color will be slightly darker than sky
+  const fogColor = new THREE.Color(stageConfig.skyColor);
+  fogColor.r *= 0.7;
+  fogColor.g *= 0.7;
+  fogColor.b *= 0.7;
+  scene.fog = new THREE.FogExp2(fogColor, 0.04);
+  
   // Initialize game objects
   maze = new Maze(size, size, 4);
   minimap = new Minimap(document.getElementById('minimap'), maze);
@@ -92,7 +101,7 @@ function initStage() {
   }
 
   // Build dungeon
-  const textures = createDungeonTextures();
+  const textures = createDungeonTextures(stageConfig);
   dungeonGroup = buildDungeon(scene, maze, textures);
   
   keyObject = createKey(scene, textures.keyMaterial, maze.cellToWorld(maze.keyCell));
@@ -268,12 +277,22 @@ function addLights(scene) {
   scene.add(dir);
 }
 
-function createDungeonTextures() {
-  const wallTexture = createStoneTexture('#4a4a4a', '#3a3a3a');
+function createDungeonTextures(stageConfig) {
+  // Use stage-specific colors
+  const wallColor = stageConfig.wallColor || '#4a4a4a';
+  const floorColor = stageConfig.floorColor || '#2f2f35';
+  
+  // Darker accent for wall texture (convert to darker version)
+  const wallAccentColor = '#' + wallColor.slice(1).split('').map(c => {
+    const num = parseInt(c, 16);
+    return Math.max(0, num - 3).toString(16);
+  }).join('');
+  
+  const wallTexture = createStoneTexture(wallColor, wallAccentColor);
   wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
   wallTexture.repeat.set(1, 1);
 
-  const floorTexture = createStoneFloorTexture();
+  const floorTexture = createStoneFloorTexture(floorColor);
   floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
   // Use logical dimensions for floor texture
   const floorRepeat = Math.max(maze.logicalWidth, maze.logicalHeight);
@@ -323,12 +342,12 @@ function createStoneTexture(base, accent) {
   return new THREE.CanvasTexture(canvas);
 }
 
-function createStoneFloorTexture() {
+function createStoneFloorTexture(color = '#2f2f35') {
   const size = 256;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#2f2f35';
+  ctx.fillStyle = color;
   ctx.fillRect(0, 0, size, size);
   ctx.strokeStyle = 'rgba(200, 200, 210, 0.2)';
   ctx.lineWidth = 2;

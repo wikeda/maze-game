@@ -102,7 +102,7 @@ function initStage() {
 
   // Build dungeon
   const textures = createDungeonTextures(stageConfig);
-  dungeonGroup = buildDungeon(scene, maze, textures);
+  dungeonGroup = buildDungeon(scene, maze, textures, stageConfig);
   
   keyObject = createKey(scene, textures.keyMaterial, maze.cellToWorld(maze.keyCell));
   exitObject = createExit(scene, textures.doorMaterial, maze.cellToWorld(maze.exitCell));
@@ -390,15 +390,18 @@ function createWoodTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-function buildDungeon(scene, maze, textures) {
+function buildDungeon(scene, maze, textures, stageConfig) {
   const group = new THREE.Group();
   
   // Create floor covering the entire logical grid
   const floorSize = Math.max(maze.logicalWidth, maze.logicalHeight) * maze.cellSize;
   const floorGeometry = new THREE.PlaneGeometry(floorSize, floorSize, 1, 1);
+  
+  // Convert hex color string to number for floor
+  const floorColorHex = stageConfig.floorColor.replace('#', '0x');
   const floorMaterial = new THREE.MeshStandardMaterial({
     map: textures.floorTexture,
-    color: 0xffffff,
+    color: parseInt(floorColorHex),
     roughness: 0.8,
   });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -406,9 +409,11 @@ function buildDungeon(scene, maze, textures) {
   floor.receiveShadow = true;
   group.add(floor);
 
+  // Convert hex color string to number for walls
+  const wallColorHex = stageConfig.wallColor.replace('#', '0x');
   const wallMaterial = new THREE.MeshStandardMaterial({
     map: textures.wallTexture,
-    color: 0xffffff,
+    color: parseInt(wallColorHex),
     roughness: 0.7,
     metalness: 0.1,
   });

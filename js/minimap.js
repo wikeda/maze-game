@@ -6,7 +6,7 @@ export class Minimap {
     this.padding = 8;
     this.scale = (this.canvas.width - this.padding * 2) / this.maze.width;
     this.visited = Array.from({ length: maze.height }, () => Array(maze.width).fill(false));
-    this.discovered = { key: true, exit: true }; // Always show key and exit
+    this.discovered = { key: false, exit: true }; // Exit always visible, key hidden until found
     this.baseLayer = document.createElement('canvas');
     this.baseLayer.width = this.canvas.width;
     this.baseLayer.height = this.canvas.height;
@@ -94,10 +94,7 @@ export class Minimap {
       }
     }
     
-    // 鍵とゴールの位置を薄く表示
-    if (this.discovered.key && keyCell) {
-      this._drawMarker(keyCell, 'rgba(241, 201, 77, 0.4)');
-    }
+    // ゴールの位置を常に表示（鍵は見つけるまで非表示）
     if (this.discovered.exit && exitCell) {
       this._drawMarker(exitCell, 'rgba(92, 213, 116, 0.4)');
     }
